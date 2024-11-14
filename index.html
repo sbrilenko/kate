@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merge Excel Files</title>
+    <!-- Подключение библиотеки SheetJS (XLSX) -->
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <!-- Подключение библиотеки FileSaver.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #f3f4f6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 800px;
+            text-align: center;
+        }
+        .title {
+            color: #333;
+            margin: 20px 0;
+        }
+        .upload-section {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+        .upload-section div {
+            width: 270px;
+            height: 218px;
+        }
+        .upload-btn-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        .btn {
+            border: 2px solid #4CAF50;
+            color: white;
+            background-color: #4CAF50;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .btn:hover {
+            background-color: #45a049;
+        }
+        input[type="file"] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 146px;
+            height: 39px;
+        }
+        img {
+            max-width: 100%;
+            border-radius: 12px;
+        }
+        .generate-btn {
+            border: 2px solid #008CBA;
+            background-color: #008CBA;
+            color: white;
+            padding: 8px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s;
+            margin-top: 20px;
+        }
+        .generate-btn:hover {
+            background-color: #007bb5;
+        }
+        .hidden {
+            display: none;
+        }
+        .link-btn { color: #4CAF50; cursor: pointer; text-decoration: underline; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="upload-section">
+        <div>
+            <img src="bender.gif" alt="Bender Image">
+        </div>
+        <div>
+            <h1 class="border title hidden" id="first-border">Load First Main file</h1>
+            <h1 class="border title hidden" id="second-border">Load Second file</h1>
+            <h1 class="border title hidden" id="thread-border">Generate new file</h1>
+            <h1 class="border title hidden" id="forth-border">That'll be $140</h1>
+        </div>
+
+    </div>
+    <h1>Do it</h1>
+    <div class="upload-btn-wrapper">
+        <button class="btn">Choose File 1</button>
+        <input type="file" id="file1" />
+    </div>
+    <div class="upload-btn-wrapper">
+        <button class="btn">Choose File 2</button>
+        <input type="file" id="file2" />
+    </div>
+    <div class="upload-btn-wrapper">
+        <button class="generate-btn" onclick="mergeFiles()">Generate</button>
+    </div>
+    <div>
+        <span class="link-btn" onclick="clearFiles()">Clear Files</span>
+    </div>
+</div>
+<script>
+    toggleText('first-border');
+    let dataFile1 = null;
+    let dataFile2 = null;
+
+    // Чтение первого файла
+    document.getElementById("file1").addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = e.target.result;
+            dataFile1 = XLSX.read(data, { type: 'array' });
+            if (dataFile2 !== null ) {
+                toggleText('thread-border');
+            } else {
+                toggleText('second-border');
+            }
+
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    // Чтение второго файла
+    document.getElementById("file2").addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = e.target.result;
+            dataFile2 = XLSX.read(data, { type: 'array' });
+            if (dataFile1 !== null ) {
+                toggleText('thread-border');
+            } else {
+                toggleText('first-border');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    // Функция для слияния файлов
+    function mergeFiles() {
+        if (!dataFile1 || !dataFile2) {
+            alert('Please upload both files.');
+            return;
+        }
+
+        // Извлекаем данные из первого файла
+        const sheet1 = dataFile1.Sheets[dataFile1.SheetNames[0]];
+        const jsonFile1 = XLSX.utils.sheet_to_json(sheet1);
+
+        // Извлекаем данные из второго файла
+        const sheet2 = dataFile2.Sheets[dataFile2.SheetNames[0]];
+        const jsonFile2 = XLSX.utils.sheet_to_json(sheet2);
+
+        // Создаем объект для быстрого поиска данных по Personal Number
+        const file2Data = jsonFile2.reduce((acc, row) => {
+            acc[row["Personal Number"]] = row; // Строим индекс по Personal Number
+            return acc;
+        }, {});
+
+        // Мержим данные по ID
+        const mergedData = jsonFile1.map(row => {
+            const file2Row = file2Data[row.ID];
+            if (file2Row) {
+                return {
+                    ...row,
+                    "KYC Status": file2Row["KYC Status"],
+                    "Account Status": file2Row["Account Status"]
+                };
+            }
+            return row; // Если не найдено, оставляем исходную строку
+        });
+
+        // Создаем новый Excel файл
+        const ws = XLSX.utils.json_to_sheet(mergedData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Merged Data");
+        // Создаем Blob и сохраняем с помощью FileSaver.js
+        const array = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([array], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, 'output.xlsx');
+        toggleText('forth-border');
+    }
+
+    function toggleText(elementName) {
+        document.querySelectorAll(".border").forEach(a => a.classList.add('hidden'));
+        document.getElementById(elementName).classList.remove('hidden');
+    }
+    // Функция для очистки полей ввода файлов
+    function clearFiles() { document.getElementById("file1").value = ""; document.getElementById("file2").value = ""; dataFile1 = null; dataFile2 = null; alert('Files have been cleared.');
+        toggleText('first-border'); }
+</script>
+</body>
+</html>
