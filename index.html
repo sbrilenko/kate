@@ -189,7 +189,6 @@
         // Мержим данные по ID
         const mergedData = jsonFile1.map(row => {
             const file2Row = file2Data[row.Customer];
-            console.log(file2Row);
             if (file2Row) {
                 return {
                     ...row,
